@@ -12,8 +12,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
+import { getEffectiveSupervisor } from '@/lib/leave-logic';
+
 export default function ApprovalsPage() {
-    const { history, approveRequest, rejectRequest } = useLeaveContext();
+    const { history, approveRequest, rejectRequest, allRequests } = useLeaveContext();
     const { currentUser, users } = useAuth();
     const { t, dateLocale } = useLanguage();
     const router = useRouter();
@@ -22,7 +24,12 @@ export default function ApprovalsPage() {
     const pendingRequests = history.filter(req => {
         if (req.status !== 'pending') return false;
         const requester = users.find(u => u.id === req.userId);
-        return requester?.supervisorId === currentUser.id;
+
+        if (!requester) return false;
+
+        // Check if current user is the effective supervisor (handling substitution)
+        const effectiveSupervisorId = getEffectiveSupervisor(requester, users, allRequests || history);
+        return effectiveSupervisorId === currentUser.id;
     });
 
     if (pendingRequests.length === 0) {
